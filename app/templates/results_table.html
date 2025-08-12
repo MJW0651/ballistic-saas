@@ -1,12 +1,12 @@
-<div class="bg-white rounded-2xl shadow-sm border p-5">
+<div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5">
   <div class="flex items-center justify-between mb-3">
     <h2 class="text-base font-semibold">Results ({{ units }})</h2>
-    <span class="text-xs text-slate-500">Tip: round MIL to 0.1; MOA to 0.25</span>
+    <span class="text-xs text-slate-400">Tip: MIL rounds to 0.1, MOA to 0.25</span>
   </div>
 
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
-      <thead class="sticky top-0 bg-slate-100 text-slate-700 border-b">
+      <thead class="sticky top-0 bg-slate-800 text-slate-200 border-b border-slate-700">
         <tr>
           <th class="th">Distance (yd)</th>
           <th class="th">Elevation ({{ units }})</th>
@@ -18,7 +18,7 @@
       </thead>
       <tbody>
         {% for r in rows %}
-        <tr class="border-b last:border-0 odd:bg-slate-50/40">
+        <tr class="border-b border-slate-800 last:border-0 odd:bg-slate-800/40">
           <td class="td">{{ r.yd }}</td>
           <td class="td font-medium">{{ r.elev }}</td>
           <td class="td">{{ r.wind }}</td>
@@ -32,6 +32,6 @@
   </div>
 
   <p class="text-xs text-slate-500 mt-3">
-    Note: Physics is simplified for MVP (no drag). Next step swaps in a G7/G1 drag model integrator.
+    Note: physics simplified for MVP (no drag). Next step: G7/G1 drag model integrator.
   </p>
 </div>

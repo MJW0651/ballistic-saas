@@ -1,34 +1,83 @@
-:root { --ring: 0 0% 0%; }
-* { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+/* Global font */
+* {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+               "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
 
+/* ---------- Inputs (always light bubble style) ---------- */
 .input {
-  display: block; width: 100%;
-  border: 1px solid rgb(226 232 240);
+  display: block;
+  width: 100%;
+  border: 1px solid rgb(226 232 240);      /* slate-200 */
   border-radius: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  outline: none; background: white;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;     /* extra right padding for unit */
+  background: white;
+  color: rgb(15 23 42);                     /* slate-900 */
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background-color .15s, color .15s;
 }
 .input:focus {
-  border-color: rgb(59 130 246);
-  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.2);
+  border-color: rgb(59 130 246);           /* blue-500 */
+  box-shadow: 0 0 0 3px rgb(59 130 246 / .2);
 }
 
+/* Remove number input arrows (Chrome, Edge, Safari) */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove number input arrows (Firefox) */
+.input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Unit label inside input wrappers */
 .unit {
-  position: absolute; right: 0.5rem; top: 50%; translate: 0 -50%;
-  color: rgb(100 116 139); font-size: 0.75rem;
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgb(71 85 105);                    /* slate-600 */
+  font-weight: 500;
+  font-size: 0.75rem;                       /* text-xs */
+  pointer-events: none;
 }
 
+
+
+/* ---------- Buttons ---------- */
 .btn-primary {
-  background: rgb(37 99 235); color: white; border-radius: 0.75rem;
-  padding: 0.5rem 0.9rem; font-weight: 600;
+  background: rgb(37 99 235);               /* blue-600 */
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: filter .15s, background-color .15s;
+  cursor: pointer;
 }
-.btn-primary:hover { background: rgb(29 78 216); }
+.btn-primary:hover { background: rgb(29 78 216); }     /* blue-700 */
+.btn-primary:active { filter: brightness(0.95); }
 
-.th { text-align: left; font-weight: 600; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
-.td { padding: 0.5rem 0.75rem; white-space: nowrap; }
-
+/* ---------- Table helpers ---------- */
+.th {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;                  /* py-2 px-3 */
+  font-size: 0.85rem;
+}
+.td {
+  padding: 0.5rem 0.75rem;                  /* py-2 px-3 */
+  white-space: nowrap;
+}
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* HTMX indicator visibility */
+/* ---------- HTMX indicator visibility ---------- */
 .htmx-indicator { display: none; }
-.htmx-request .htmx-indicator { display: inline-flex; }
+.htmx-request .htmx-indicator { display: inline-flex; align-items: center; }
+
+/* Smooth background/text transition */
+html { transition: color .2s, background-color .2s; }

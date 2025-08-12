@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ballistic Calculator</title>
 
-  <!-- Tailwind + HTMX -->
+  <!-- Tailwind CDN + set dark mode to 'class' (we force it via html.dark) -->
+  <script> window.tailwind = { config: { darkMode: 'class' } }; </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 
@@ -16,20 +17,12 @@
 
   <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="h-full bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
+<body class="h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <div class="min-h-full">
-    <header class="border-b bg-white/70 backdrop-blur">
-      <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="h-9 w-9 rounded-xl bg-blue-600 text-white grid place-items-center font-semibold">BC</div>
-          <div>
-            <h1 class="text-lg font-semibold">External Ballistic Calculator</h1>
-            <p class="text-xs text-slate-500">Elevation & windage holds by distance</p>
-          </div>
-        </div>
-        <button id="themeToggle" class="text-sm px-3 py-1.5 rounded-lg border hover:bg-slate-50">
-          Toggle theme
-        </button>
+    <header class="border-b bg-slate-900/70 backdrop-blur border-slate-800">
+      <div class="max-w-6xl mx-auto px-4 py-4">
+        <h1 class="text-lg font-bold tracking-tight">External Ballistic Calculator</h1>
+        <p class="text-xs text-slate-400">Elevation & windage holds by distance</p>
       </div>
     </header>
 
@@ -37,12 +30,5 @@
       {% block content %}{% endblock %}
     </main>
   </div>
-
-  <!-- Simple theme toggle (adds/removes 'dark' on html) -->
-  <script>
-    const html = document.documentElement;
-    const btn = document.getElementById('themeToggle');
-    btn?.addEventListener('click', () => html.classList.toggle('dark'));
-  </script>
 </body>
 </html>
