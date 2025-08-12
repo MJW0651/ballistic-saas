@@ -1,0 +1,39 @@
+name: Ballistic SaaS CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Check out the repository
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Set up Python 3.13
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    # 3. Install dependencies
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # 4. Lint the code for syntax issues
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    # 5. Smoke test the FastAPI app
+    - name: Run app import test
+      run: |
+        python -c "import uvicorn; import app.main; print('✅ App imports fine')"
