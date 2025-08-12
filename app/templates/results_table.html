@@ -1,0 +1,37 @@
+<div class="bg-white rounded-2xl shadow-sm border p-5">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-base font-semibold">Results ({{ units }})</h2>
+    <span class="text-xs text-slate-500">Tip: round MIL to 0.1; MOA to 0.25</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="sticky top-0 bg-slate-100 text-slate-700 border-b">
+        <tr>
+          <th class="th">Distance (yd)</th>
+          <th class="th">Elevation ({{ units }})</th>
+          <th class="th">Windage ({{ units }})</th>
+          <th class="th">TOF (s)</th>
+          <th class="th">Vel (fps)</th>
+          <th class="th">Energy (ft-lb)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="border-b last:border-0 odd:bg-slate-50/40">
+          <td class="td">{{ r.yd }}</td>
+          <td class="td font-medium">{{ r.elev }}</td>
+          <td class="td">{{ r.wind }}</td>
+          <td class="td tabular-nums">{{ "%.3f"|format(r.tof_s) }}</td>
+          <td class="td tabular-nums">{{ "%.0f"|format(r.vel_fps) }}</td>
+          <td class="td tabular-nums">{{ "%.0f"|format(r.energy_ftlb) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-xs text-slate-500 mt-3">
+    Note: Physics is simplified for MVP (no drag). Next step swaps in a G7/G1 drag model integrator.
+  </p>
+</div>

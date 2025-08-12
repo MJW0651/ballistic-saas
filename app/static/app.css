@@ -1,0 +1,34 @@
+:root { --ring: 0 0% 0%; }
+* { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+
+.input {
+  display: block; width: 100%;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  outline: none; background: white;
+}
+.input:focus {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.2);
+}
+
+.unit {
+  position: absolute; right: 0.5rem; top: 50%; translate: 0 -50%;
+  color: rgb(100 116 139); font-size: 0.75rem;
+}
+
+.btn-primary {
+  background: rgb(37 99 235); color: white; border-radius: 0.75rem;
+  padding: 0.5rem 0.9rem; font-weight: 600;
+}
+.btn-primary:hover { background: rgb(29 78 216); }
+
+.th { text-align: left; font-weight: 600; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+.td { padding: 0.5rem 0.75rem; white-space: nowrap; }
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* HTMX indicator visibility */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline-flex; }

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block content %}
+
+<form
+  hx-post="/solve"
+  hx-target="#results"
+  hx-swap="innerHTML"
+  hx-indicator="#calc-loading"
+  class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+>
+  <!-- Card: Rifle & Ammo -->
+  <section class="bg-white rounded-2xl shadow-sm border p-5 lg:col-span-1">
+    <h2 class="text-base font-semibold mb-4">Rifle & Ammo</h2>
+
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block text-sm">
+        <span class="text-slate-600">Zero</span>
+        <div class="relative mt-1">
+          <input name="zero_yd" type="number" value="100" class="input">
+          <span class="unit">yd</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Scope height</span>
+        <div class="relative mt-1">
+          <input name="scope_h_in" type="number" step="0.01" value="1.5" class="input">
+          <span class="unit">in</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Muzzle velocity</span>
+        <div class="relative mt-1">
+          <input name="mv_fps" type="number" value="2800" class="input">
+          <span class="unit">fps</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Ballistic Coefficient</span>
+        <div class="relative mt-1">
+          <input name="bc" type="number" step="0.001" value="0.275" class="input">
+          <span class="unit">—</span>
+        </div>
+      </label>
+
+      <label class="block text-sm col-span-2">
+        <span class="text-slate-600">BC model</span>
+        <select name="bc_model" class="input mt-1">
+          <option>G7</option>
+          <option>G1</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <!-- Card: Atmos & Wind -->
+  <section class="bg-white rounded-2xl shadow-sm border p-5 lg:col-span-1">
+    <h2 class="text-base font-semibold mb-4">Atmos & Wind</h2>
+
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block text-sm">
+        <span class="text-slate-600">Temperature</span>
+        <div class="relative mt-1">
+          <input name="temp_f" type="number" value="59" class="input">
+          <span class="unit">°F</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Pressure</span>
+        <div class="relative mt-1">
+          <input name="pressure_inHg" type="number" step="0.01" value="29.92" class="input">
+          <span class="unit">inHg</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Humidity</span>
+        <div class="relative mt-1">
+          <input name="rh" type="number" step="0.01" value="0.50" class="input">
+          <span class="unit">0–1</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Altitude</span>
+        <div class="relative mt-1">
+          <input name="altitude_ft" type="number" value="0" class="input">
+          <span class="unit">ft</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Wind speed</span>
+        <div class="relative mt-1">
+          <input name="wind_speed_mph" type="number" value="10" class="input">
+          <span class="unit">mph</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Wind direction</span>
+        <div class="relative mt-1">
+          <input name="wind_dir_deg" type="number" value="90" class="input">
+          <span class="unit">deg</span>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">90 = right→left full value</p>
+      </label>
+    </div>
+  </section>
+
+  <!-- Card: Output & Actions -->
+  <section class="bg-white rounded-2xl shadow-sm border p-5 lg:col-span-1">
+    <h2 class="text-base font-semibold mb-4">Output</h2>
+
+    <div class="grid grid-cols-3 gap-4">
+      <label class="block text-sm">
+        <span class="text-slate-600">Start</span>
+        <div class="relative mt-1">
+          <input name="start_yd" type="number" value="100" class="input">
+          <span class="unit">yd</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">End</span>
+        <div class="relative mt-1">
+          <input name="end_yd" type="number" value="1000" class="input">
+          <span class="unit">yd</span>
+        </div>
+      </label>
+
+      <label class="block text-sm">
+        <span class="text-slate-600">Step</span>
+        <div class="relative mt-1">
+          <input name="step_yd" type="number" value="50" class="input">
+          <span class="unit">yd</span>
+        </div>
+      </label>
+
+      <label class="block text-sm col-span-3">
+        <span class="text-slate-600">Angular units</span>
+        <select name="angular_units" class="input mt-1">
+          <option>MIL</option>
+          <option>MOA</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="mt-5 flex gap-3">
+      <button class="btn-primary" type="submit">
+        Calculate
+      </button>
+
+      <div id="calc-loading" class="htmx-indicator inline-flex items-center gap-2 text-slate-600 text-sm">
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3A5 5 0 007 12H4z"></path>
+        </svg>
+        Calculating…
+      </div>
+    </div>
+  </section>
+</form>
+
+<!-- Results -->
+<section id="results" class="mt-6"></section>
+
+{% endblock %}
