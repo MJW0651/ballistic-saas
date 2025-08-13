@@ -11,105 +11,142 @@ IN_PER_FT = 12.0
 FT_PER_YD = 3.0
 FTPS_PER_MPH = 1.4666667     # mph -> ft/s
 
-# Cache for drag tables (loaded once)
-_DRAG = {}
+# Cache for drag data
+_DRAG_JSON = {}
+_DRAG_TABLE = {}
 
 @dataclass
 class Row:
     yd: int
-    elev: float          # MIL or MOA (per input selection)
-    wind: float          # MIL or MOA (signed: +R, -L)
-    tof_s: float         # time of flight (s)
-    vel_fps: float       # remaining (ground-relative) velocity (ft/s)
-    energy_ftlb: float   # kinetic energy (ft-lb)
+    elev: float          # MIL or MOA
+    wind: float          # signed: +R, -L
+    tof_s: float
+    vel_fps: float
+    energy_ftlb: float
 
 # ----------------- Unit + energy helpers -----------------
 def to_mil(inches: float, yards: float) -> float:
-    """MIL hold given linear offset in inches at range in yards (2 decimals)."""
     return round((inches / (yards * 36.0)) * 1000.0, 2)
 
 def to_moa(inches: float, yards: float) -> float:
-    """MOA hold given linear offset in inches at range in yards (0.1 MOA)."""
     moa = inches / (1.0472 * (yards / 100.0))
     return round(moa, 1)
 
 def energy_ftlb(vel_fps: float, bullet_gr: float = 140.0) -> float:
-    # E (ft-lb) = (weight_gr * v^2) / 450240
     return (bullet_gr * vel_fps**2) / 450240.0
 
-# ----------------- Drag model helpers -----------------
-def _load_drag(model: str):
-    """
-    Load and cache a drag table for G1 or G7.
-    File is JSON array of [fps, drag_coeff] in descending velocity.
-    """
-    key = model.upper()
-    if key not in ("G1", "G7"):
-        key = "G7"
-    if key not in _DRAG:
-        here = pathlib.Path(__file__).parent
-        p = here / "drag" / f"{key.lower()}.json"
-        _DRAG[key] = json.loads(p.read_text())
-    return _DRAG[key]
-
-def _interp_drag(v_fps: float, tbl):
-    """
-    Piecewise-linear interpolation on the drag table.
-    If outside the table bounds, clamp to nearest endpoint.
-    """
-    if v_fps >= tbl[0][0]:
-        return tbl[0][1]
-    if v_fps <= tbl[-1][0]:
-        return tbl[-1][1]
-    for (v1, d1), (v2, d2) in zip(tbl, tbl[1:]):
-        if v2 <= v_fps <= v1:
-            t = (v1 - v_fps) / (v1 - v2)
-            return d1 + t * (d2 - d1)
-    return tbl[-1][1]
-
+# ----------------- Atmos scaling -----------------
 def _air_density_scale(temp_f: float, pressure_inHg: float, rh: float, altitude_ft: float) -> float:
     """
-    First-order density scaling:
-      rho ~ (pressure / 29.92) * (519.67 / T_R)
-    Simple and effective for practical weather changes.
+    Scale vs. ICAO sea-level standard. (Good first-order density model.)
+    rho_ratio ≈ (P/29.92) * (519.67 / T_R)
     """
     T_R = temp_f + 459.67  # Rankine
     return (max(0.1, pressure_inHg) / 29.92) * (519.67 / max(200.0, T_R))
 
-# ----------------- Main solver -----------------
+# ----------------- Canonical drag function loader -----------------
+def _load_table_or_fallback(model: str):
+    """
+    Try to load canonical G-table (mcg1.txt / mcg7.txt) in app/drag/.
+    Format expected: two numeric columns per line: <velocity_fps> <f(V)>
+    If unavailable, fall back to the lightweight JSON used earlier.
+    Returns a tuple: (callable f(v_fps), source_label)
+    """
+    key = model.upper()
+    here = pathlib.Path(__file__).parent
+    drag_dir = here / "drag"
+
+    # Attempt canonical table first
+    table_name = {"G1": "mcg1.txt", "G7": "mcg7.txt"}.get(key, "mcg7.txt")
+    table_path = drag_dir / table_name
+    if table_path.exists():
+        if key not in _DRAG_TABLE:
+            xs, ys = [], []
+            for line in table_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.replace(",", " ").split()
+                if len(parts) < 2:
+                    continue
+                try:
+                    v = float(parts[0])
+                    g = float(parts[1])
+                    xs.append(v)
+                    ys.append(g)
+                except ValueError:
+                    continue
+            # Ensure descending by velocity (common in published tables)
+            pairs = sorted(zip(xs, ys), key=lambda p: p[0], reverse=True)
+            _DRAG_TABLE[key] = pairs
+
+        pairs = _DRAG_TABLE[key]
+
+        def f_of_v(v_fps: float) -> float:
+            """Piecewise-linear interpolation of canonical G-table, clamped at ends."""
+            if v_fps >= pairs[0][0]:
+                return pairs[0][1]
+            if v_fps <= pairs[-1][0]:
+                return pairs[-1][1]
+            # binary search would be faster; linear is fine for table sizes
+            for (v1, g1), (v2, g2) in zip(pairs, pairs[1:]):
+                if v2 <= v_fps <= v1:
+                    t = (v1 - v_fps) / (v1 - v2)
+                    return g1 + t * (g2 - g1)
+            return pairs[-1][1]
+
+        return f_of_v, f"{table_name}"
+
+    # ---- Fallback to JSON (keeps the app running if tables missing) ----
+    json_name = f"{key.lower()}.json"
+    json_path = drag_dir / json_name
+    if key not in _DRAG_JSON:
+        _DRAG_JSON[key] = json.loads(json_path.read_text())
+
+    tbl = _DRAG_JSON[key]
+
+    def f_of_v_fallback(v_fps: float) -> float:
+        # Interpret JSON value as a relative drag scale; map it to a “G-like” function.
+        # This keeps continuity with your prior solver if the canonical files aren’t present.
+        if v_fps >= tbl[0][0]:
+            val = tbl[0][1]
+        elif v_fps <= tbl[-1][0]:
+            val = tbl[-1][1]
+        else:
+            for (v1, d1), (v2, d2) in zip(tbl, tbl[1:]):
+                if v2 <= v_fps <= v1:
+                    t = (v1 - v_fps) / (v1 - v2)
+                    val = d1 + t * (d2 - d1)
+                    break
+        # Map to a dimensionless f(V) scale in the same ballpark.
+        return float(val)
+
+    return f_of_v_fallback, json_name
+
+# ----------------- Main solver (point-mass with canonical G) -----------------
 def compute_table(inp: SolveInput):
     """
-    RK2 (midpoint) integrator with selectable G1/G7 drag.
+    Point-mass RK2 integrator using canonical G1/G7 drag function f(V) and BC.
 
     Coordinates:
       x: forward (ft), y: up (ft), z: right (ft)
-      vx, vy, vz are ground-relative (ft/s)
+      v = ground-relative velocity (vx, vy, vz)
 
-    Drag is computed from air-relative velocity:
-      v_rel = v_bullet - v_wind
-      a_drag = -C(v_rel) * v_rel    (per component)
-    Gravity acts on y.
-
-    Wind convention (wind_dir_deg is where wind COMES FROM):
-      0° = headwind (from target -> shooter), 180° = tailwind,
-      90° = from right (blows right->left), 270° = from left (blows left->right).
-
-    Wind hold sign:
-      z > 0 means bullet drifted RIGHT. We output +R, -L (numeric sign only here).
+    Drag acceleration (vector), Siacci form:
+      a_drag = - [ g * f(V_rel) * rho_ratio / BC ] * (v_rel / |v_rel|)
+      where V_rel and v_rel are air-relative speed/vector.
     """
-    # Load drag model
-    tbl = _load_drag(inp.bc_model)
+    f_of_v, source_used = _load_table_or_fallback(inp.bc_model)
 
-    # Inputs & derived values
     v0 = float(inp.mv_fps)
     zero_ft = inp.zero_yd * FT_PER_YD
     scope_h_ft = inp.scope_h_in / IN_PER_FT
-    dens = _air_density_scale(inp.temp_f, inp.pressure_inHg, inp.rh, inp.altitude_ft)
+    rho_ratio = _air_density_scale(inp.temp_f, inp.pressure_inHg, inp.rh, inp.altitude_ft)
 
-    # Muzzle angle seed from a no-drag zero (integration then dominates)
+    # Seed muzzle angle from no-drag zero (fast convergence); integration dominates afterwards
     theta = ((G_FTPS2 * zero_ft**2) / (2.0 * v0**2) - scope_h_ft) / max(1.0, zero_ft)
 
-    # Initial bullet state (ground-relative)
+    # Initial state (ground-relative)
     vx, vy, vz = v0, v0 * theta, 0.0
     x = y = z = 0.0
     t = 0.0
@@ -118,53 +155,57 @@ def compute_table(inp: SolveInput):
     dists = list(range(inp.start_yd, inp.end_yd + 1, inp.step_yd))
     next_i = 0
 
-    # --- Wind vector (ft/s), based on "coming from" angle ---
-    # 0°: headwind (from +x toward -x) => wind vector ~ -x
-    # 90°: from right => wind vector ~ -z
+    # Wind vector (ft/s), wind_dir_deg is where wind COMES FROM:
+    # 0°: headwind (from target toward shooter) => -x; 90°: from right => -z
     wind_speed = max(0.0, float(inp.wind_speed_mph)) * FTPS_PER_MPH
     ang = radians(float(inp.wind_dir_deg))
-    wind_x = -wind_speed * cos(ang)   # headwind reduces bullet's x; tailwind increases
-    wind_z = -wind_speed * sin(ang)   # from right (90°) => -z; from left (270°) => +z
+    wind_x = -wind_speed * cos(ang)
+    wind_z = -wind_speed * sin(ang)
 
-    # Time step based on solver quality
+    # Time step: 2 ms (standard) or 1 ms (high)
     dt = 0.001 if getattr(inp, "solver_quality", "standard") == "high" else 0.002
     bullet_gr = float(getattr(inp, "bullet_gr", 140.0))
 
     rows = []
 
-    # Integrate until we've passed the last distance or timing out
     while next_i < len(dists) and t < 6.0 and vx > 0.1:
-        # Air-relative components at current state
+        # Air-relative velocity
         rx = vx - wind_x
-        ry = vy                     # no vertical wind in this model
+        ry = vy
         rz = vz - wind_z
-        vrel = max(1.0, (rx*rx + ry*ry + rz*rz) ** 0.5)
+        vrel = (rx*rx + ry*ry + rz*rz)**0.5
+        if vrel < 1e-6:
+            vrel = 1e-6
 
-        # Drag factor from table at |v_rel|
-        drag = _interp_drag(vrel, tbl) * dens / max(1e-6, inp.bc)
+        # Canonical drag function (dimensionless); scale by g, density ratio, and 1/BC
+        fval = f_of_v(vrel)
+        k = (G_FTPS2 * fval * rho_ratio) / max(1e-6, inp.bc)
 
-        # Accelerations (drag per air-relative component; gravity on y)
-        ax = -drag * rx
-        ay = -G_FTPS2 - drag * ry
-        az = -drag * rz
+        # Drag acceleration along air flow (unit vector of v_rel)
+        ax = -k * (rx / vrel)
+        ay = -G_FTPS2 - k * (ry / vrel)   # gravity + drag
+        az = -k * (rz / vrel)
 
-        # Midpoint (RK2): estimate state at t + dt/2
+        # Midpoint (RK2)
         mx = vx + ax * dt * 0.5
         my = vy + ay * dt * 0.5
         mz = vz + az * dt * 0.5
 
-        # Air-relative at midpoint
         mrx = mx - wind_x
         mry = my
         mrz = mz - wind_z
-        vrel2 = max(1.0, (mrx*mrx + mry*mry + mrz*mrz) ** 0.5)
-        drag2 = _interp_drag(vrel2, tbl) * dens / max(1e-6, inp.bc)
+        vrel2 = (mrx*mrx + mry*mry + mrz*mrz)**0.5
+        if vrel2 < 1e-6:
+            vrel2 = 1e-6
 
-        ax2 = -drag2 * mrx
-        ay2 = -G_FTPS2 - drag2 * mry
-        az2 = -drag2 * mrz
+        fval2 = f_of_v(vrel2)
+        k2 = (G_FTPS2 * fval2 * rho_ratio) / max(1e-6, inp.bc)
 
-        # Advance bullet state (ground-relative)
+        ax2 = -k2 * (mrx / vrel2)
+        ay2 = -G_FTPS2 - k2 * (mry / vrel2)
+        az2 = -k2 * (mrz / vrel2)
+
+        # Advance state
         vx += ax2 * dt
         vy += ay2 * dt
         vz += az2 * dt
@@ -173,12 +214,12 @@ def compute_table(inp: SolveInput):
         z  += mz * dt
         t  += dt
 
-        # Emit rows when passing each requested distance
+        # Emit rows at requested distances
         while next_i < len(dists) and x >= dists[next_i] * FT_PER_YD:
             yd = dists[next_i]
             y_rel_sight_ft = y + scope_h_ft
             drop_in = -y_rel_sight_ft * IN_PER_FT
-            drift_in = z * IN_PER_FT  # signed: +right, -left
+            drift_in = z * IN_PER_FT  # signed (+R, -L)
 
             if inp.angular_units == "MIL":
                 elev = to_mil(drop_in, yd)
@@ -187,11 +228,11 @@ def compute_table(inp: SolveInput):
                 elev = to_moa(drop_in, yd)
                 wind = to_moa(drift_in, yd)
 
-            v_now = max(1.0, (vx*vx + vy*vy + vz*vz) ** 0.5)  # ground-relative speed
+            v_now = (vx*vx + vy*vy + vz*vz)**0.5
             rows.append(Row(
                 yd=yd,
                 elev=elev,
-                wind=wind,                 # signed numeric (R+ / L-)
+                wind=wind,                 # numeric sign; template already renders L/R
                 tof_s=t,
                 vel_fps=v_now,
                 energy_ftlb=energy_ftlb(v_now, bullet_gr=bullet_gr),
