@@ -6,6 +6,10 @@ class SolveInput(BaseModel):
     mv_fps: float
     bc: float
     bc_model: str  # "G7" or "G1"
+
+    bullet_gr: float = 140.0
+    solver_quality: str = "standard"  # "standard" or "high"
+
     temp_f: float
     pressure_inHg: float
     rh: float
@@ -30,3 +34,12 @@ class SolveInput(BaseModel):
         if v.upper() not in ("G1", "G7"):
             raise ValueError("bc_model must be G1 or G7")
         return v.upper()
+
+    @field_validator("solver_quality")
+    @classmethod
+    def valid_quality(cls, v):
+        v = v.lower()
+        if v not in ("standard", "high"):
+            raise ValueError("solver_quality must be 'standard' or 'high'")
+        return v
+

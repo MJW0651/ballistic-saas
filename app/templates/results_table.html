@@ -1,7 +1,7 @@
 <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5">
   <div class="flex items-center justify-between mb-3">
     <h2 class="text-base font-semibold">Results ({{ units }})</h2>
-    <span class="text-xs text-slate-400">MIL rounds to 0.1, MOA rounds to 0.25</span>
+    <span class="text-xs text-slate-400">Tip: MIL ~0.01 precision; MOA ~0.1</span>
   </div>
 
   <div class="overflow-x-auto">
@@ -19,9 +19,20 @@
       <tbody>
         {% for r in rows %}
         <tr class="border-b border-slate-800 last:border-0 odd:bg-slate-800/40">
-          <td class="td">{{ r.yd }}</td>
-          <td class="td font-medium">{{ r.elev }}</td>
-          <td class="td">{{ r.wind }}</td>
+          <td class="td tabular-nums">{{ r.yd }}</td>
+          <td class="td tabular-nums">{{ "%.2f"|format(r.elev) }}</td>
+
+          <!-- L/R windage label -->
+          <td class="td tabular-nums">
+            {% if r.wind > 0 %}
+              R {{ "%.2f"|format(r.wind) }}
+            {% elif r.wind < 0 %}
+              L {{ "%.2f"|format(-r.wind) }}
+            {% else %}
+              0
+            {% endif %}
+          </td>
+
           <td class="td tabular-nums">{{ "%.3f"|format(r.tof_s) }}</td>
           <td class="td tabular-nums">{{ "%.0f"|format(r.vel_fps) }}</td>
           <td class="td tabular-nums">{{ "%.0f"|format(r.energy_ftlb) }}</td>
@@ -32,6 +43,6 @@
   </div>
 
   <p class="text-xs text-slate-500 mt-3">
-    Note: physics simplified for MVP (no drag). Next step: G7/G1 drag model integrator.
+    Note: Wind labels — <strong>R</strong> means hold Right, <strong>L</strong> means hold Left. Sign is based on the wind “coming from” angle.
   </p>
 </div>

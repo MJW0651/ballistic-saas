@@ -22,6 +22,10 @@ async def solve(
     mv_fps: float = Form(...),
     bc: float = Form(...),
     bc_model: str = Form(...),
+
+    bullet_gr: float = Form(140.0),
+    solver_quality: str = Form("standard"),
+
     temp_f: float = Form(...),
     pressure_inHg: float = Form(...),
     rh: float = Form(...),
@@ -31,7 +35,7 @@ async def solve(
     start_yd: int = Form(...),
     end_yd: int = Form(...),
     step_yd: int = Form(...),
-    angular_units: str = Form(...),  # "MIL" or "MOA"
+    angular_units: str = Form(...),
 ):
     payload = SolveInput(
         zero_yd=zero_yd,
@@ -39,6 +43,8 @@ async def solve(
         mv_fps=mv_fps,
         bc=bc,
         bc_model=bc_model,
+        bullet_gr=bullet_gr,
+        solver_quality=solver_quality,
         temp_f=temp_f,
         pressure_inHg=pressure_inHg,
         rh=rh,
